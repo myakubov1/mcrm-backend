@@ -1,24 +1,21 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = function (req, res, next) {
-  const authHeader = req.headers.authorization;
+class AuthMiddleware {
+  verifyToken = (req, res, next) => {
+    const token = req.header('Authorization').split(' ')[1];
 
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Токен отсутствует' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Токен отсутствует' });
-  }
-
-  try {
-    const decodedToken = jwt.verify(token, process.env.SECRET);
-    req.user = decodedToken;
-
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: 'Некорректный токен' });
-  }
-};
+    if (!token) {
+      res.status(401).json({ message: 'Отсутствует токен авторизации' });
+    } else {
+      jwt.verify(token, process.env.SECRET, (err, decoded) => {
+        if (err) {
+          res.status(401).json({ message: 'Неверный токен авторизации' });
+        } else {
+          req.user = decoded;
+          next();
+        }
+      });
+    }
+  };
+}
+module.exports = new AuthMiddleware();

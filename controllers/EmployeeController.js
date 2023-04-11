@@ -1,78 +1,121 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const Role = require('../models/Role');
-const Employee = require('../models/Employee');
-
-const generateAccessToken = (id, roles, username, date) => {
-  const payload = {
-    id,
-    roles,
-    username,
-    date,
-  };
-  return jwt.sign(payload, process.env.SECRET, { expiresIn: '24h' });
-};
+const bcrypt = require('bcrypt'); // Подключение библиотеки bcrypt
+const jwt = require('jsonwebtoken'); // Подключение библиотеки jsonwebtoken
+const Employee = require('../models/Employee'); // Подключение модели Employee
 
 class EmployeeController {
-  async registration(req, res) {
+  registerEmployee = async (req, res, next) => {
     try {
       const {
-        username, firstName, lastName, password,
+        username, firstName, lastName, password, specialties, experience,
       } = req.body;
 
-      const candidate = await Employee.findOne({ username });
-      if (candidate) {
-        return res.status(400).json({ message: 'Пользователь уже существует' });
-      }
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      const hashPassword = bcrypt.hashSync(password, 7);
-
-      const userRole = await Role.findOne({ value: 'DOCTOR' });
-
-      const user = new Employee({
+      const newEmployee = new Employee({
         username,
         firstName,
         lastName,
-        password: hashPassword,
-        roles: [userRole.value],
+        password: hashedPassword,
+        specialties,
+        experience,
       });
-      await user.save();
-      return res.json({ message: 'Пользователь успешно зарегистрирован' });
-    } catch (e) {
-      console.log(e);
-      res.status(400).json({ message: 'Ошибка при регистрации' });
-    }
-  }
 
-  async login(req, res) {
-    console.log('employee login');
+      const savedEmployee = await newEmployee.save();
+
+      res.status(201).json({ employee: savedEmployee });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  loginEmployee = async (req, res, next) => {
     try {
       const { username, password } = req.body;
-      const user = await Employee.findOne({ username });
-      if (!user) {
-        return res.status(400).json({ message: `Пользователь ${username} не найден` });
-      }
-      const validPassword = bcrypt.compareSync(password, user.password);
-      if (!validPassword) {
-        return res.status(400).json({ message: 'Введен неверный пароль' });
-      }
 
-      const token = generateAccessToken(user._id, user.roles, user.username, user.date);
-      return res.json({ token });
-    } catch (e) {
-      console.log(e);
-      res.status(400).json({ message: 'Ошибка входа' });
+      const employee = await Employee.findOne({ username });
+
+      if (!employee) {
+        res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+      } else {
+        const isPasswordMatch = await bcrypt.compare(password, employee.password);
+        if (!isPasswordMatch) {
+          res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+        } else {
+          // Генерация JWT токена
+          console.log(process.env.SECRET);
+          const token = jwt.sign({ employeeId: employee._id }, process.env.SECRET, { expiresIn: '1h' });
+
+          res.status(200).json({ token });
+        }
+      }
+    } catch (error) {
+      next(error);
     }
-  }
+  };
 
-  async getAll(req, res) {
+  getEmployeeProfile = async (req, res, next) => {
     try {
-      const users = await Employee.find();
-      res.json(users);
-    } catch (e) {
-      console.log(e);
+      const { employeeId } = req.user;
+
+      const employee = await Employee.findById(employeeId);
+
+      if (!employee) {
+        res.status(404).json({ message: 'Сотрудник не найден' });
+      } else {
+        res.status(200).json({ employee });
+      }
+    } catch (error) {
+      next(error);
     }
-  }
+  };
+
+  getEmployees = async (req, res, next) => {
+    try {
+      const employees = await Employee.find();
+
+      res.status(200).json(employees);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateEmployeeProfile = async (req, res, next) => {
+    try {
+      const { employeeId } = req.user;
+
+      const {
+        username, firstName, lastName, specialties, experience,
+      } = req.body;
+
+      const updatedEmployee = await Employee.findByIdAndUpdate(
+        employeeId,
+        {
+          username, firstName, lastName, specialties, experience,
+        },
+        { new: true },
+      );
+
+      if (!updatedEmployee) {
+        res.status(404).json({ message: 'Сотрудник не найден' });
+      } else {
+        res.status(200).json({ employee: updatedEmployee });
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteEmployeeProfile = async (req, res, next) => {
+    try {
+      const { employeeId } = req.user;
+
+      await Employee.findByIdAndRemove(employeeId);
+
+      res.status(200).json({ message: 'Профиль сотрудника успешно удален' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new EmployeeController();
