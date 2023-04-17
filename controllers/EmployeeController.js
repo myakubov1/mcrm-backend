@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt'); // Подключение библиотеки bcrypt
 const jwt = require('jsonwebtoken'); // Подключение библиотеки jsonwebtoken
 const Employee = require('../models/Employee'); // Подключение модели Employee
+const Specialty = require('../models/Specialty');
 
 class EmployeeController {
   registerEmployee = async (req, res, next) => {
@@ -8,6 +9,11 @@ class EmployeeController {
       const {
         username, firstName, lastName, password, specialties, experience,
       } = req.body;
+
+      const employeeExists = await Employee.exists({ username });
+      if (employeeExists) {
+        return res.status(401).json({ message: 'Пользователь уже существует' });
+      }
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -22,6 +28,11 @@ class EmployeeController {
 
       const savedEmployee = await newEmployee.save();
 
+      await Specialty.updateMany(
+        { _id: { $in: specialties } },
+        { $push: { employees: savedEmployee._id } },
+      );
+
       res.status(201).json({ employee: savedEmployee });
     } catch (error) {
       next(error);
@@ -35,19 +46,18 @@ class EmployeeController {
       const employee = await Employee.findOne({ username });
 
       if (!employee) {
-        res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
-      } else {
-        const isPasswordMatch = await bcrypt.compare(password, employee.password);
-        if (!isPasswordMatch) {
-          res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
-        } else {
-          // Генерация JWT токена
-          console.log(process.env.SECRET);
-          const token = jwt.sign({ employeeId: employee._id }, process.env.SECRET, { expiresIn: '1h' });
-
-          res.status(200).json({ token });
-        }
+        return res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
       }
+
+      const isPasswordMatch = await bcrypt.compare(password, employee.password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+      }
+
+      // Генерация JWT токена
+      const token = jwt.sign({ employeeId: employee._id }, process.env.SECRET, { expiresIn: '1h' });
+
+      res.status(200).json({ token });
     } catch (error) {
       next(error);
     }
@@ -58,12 +68,11 @@ class EmployeeController {
       const { employeeId } = req.user;
 
       const employee = await Employee.findById(employeeId);
-
       if (!employee) {
-        res.status(404).json({ message: 'Сотрудник не найден' });
-      } else {
-        res.status(200).json({ employee });
+        return res.status(404).json({ message: 'Сотрудник не найден' });
       }
+
+      res.status(200).json({ employee });
     } catch (error) {
       next(error);
     }
@@ -95,11 +104,17 @@ class EmployeeController {
         { new: true },
       );
 
+      // Добавление записи в специльности только тех сотрудников, id которых мы получили
+      await Specialty.updateMany(
+        { _id: { $in: specialties } },
+        { $push: { employees: employeeId } },
+      );
+
       if (!updatedEmployee) {
-        res.status(404).json({ message: 'Сотрудник не найден' });
-      } else {
-        res.status(200).json({ employee: updatedEmployee });
+        return res.status(404).json({ message: 'Сотрудник не найден' });
       }
+
+      res.status(200).json({ employee: updatedEmployee });
     } catch (error) {
       next(error);
     }

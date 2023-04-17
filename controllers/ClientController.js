@@ -9,6 +9,11 @@ class ClientController {
         passport, firstName, lastName, dateOfBirth, phoneNumber, email, password,
       } = req.body;
 
+      const clientExists = await Client.exists({ passport });
+      if (clientExists) {
+        return res.status(401).json({ message: 'Пользователь уже существует' });
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newClient = new Client({
@@ -36,18 +41,18 @@ class ClientController {
       const client = await Client.findOne({ passport });
 
       if (!client) {
-        res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
-      } else {
-        const isPasswordMatch = await bcrypt.compare(password, client.password);
-        if (!isPasswordMatch) {
-          res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
-        } else {
-          // Генерация JWT токена
-          const token = jwt.sign({ clientId: client._id }, process.env.SECRET, { expiresIn: '1h' });
-
-          res.status(200).json({ token });
-        }
+        return res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
       }
+
+      const isPasswordMatch = await bcrypt.compare(password, client.password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+      }
+
+      // Генерация JWT токена
+      const token = jwt.sign({ clientId: client._id }, process.env.SECRET, { expiresIn: '1h' });
+
+      res.status(200).json({ token });
     } catch (error) {
       next(error);
     }
@@ -60,10 +65,9 @@ class ClientController {
       const client = await Client.findById(clientId);
 
       if (!client) {
-        res.status(404).json({ message: 'Клиент не найден' });
-      } else {
-        res.status(200).json({ client });
+        return res.status(404).json({ message: 'Клиент не найден' });
       }
+      res.status(200).json({ client });
     } catch (error) {
       next(error);
     }
@@ -83,7 +87,6 @@ class ClientController {
     try {
       const { clientId } = req.user;
 
-      console.log(clientId);
       const {
         passport, firstName, lastName, dateOfBirth, phoneNumber, email,
       } = req.body;
@@ -97,10 +100,10 @@ class ClientController {
       );
 
       if (!updatedClient) {
-        res.status(404).json({ message: 'Клиент не найден' });
-      } else {
-        res.status(200).json({ employee: updatedClient });
+        return res.status(404).json({ message: 'Клиент не найден' });
       }
+
+      res.status(200).json({ employee: updatedClient });
     } catch (error) {
       next(error);
     }
