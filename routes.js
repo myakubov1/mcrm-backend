@@ -1,44 +1,45 @@
 const express = require('express');
 
-const EmployeeAuthController = require('./controllers/EmployeeController');
-const ClientAuthController = require('./controllers/ClientController');
-const MessageController = require('./controllers/MessageController');
-const TaskController = require('./controllers/TaskController');
-const RoleMiddleware = require('./middlewares/RoleMiddleware');
+const EmployeeController = require('./controllers/EmployeeController');
+const ClientController = require('./controllers/ClientController');
+const AppointmentController = require('./controllers/AppointmentController');
+const SpecialtyController = require('./controllers/SpecialtyController');
+
 const AuthMiddleware = require('./middlewares/AuthMiddleware');
 
 const apiRouter = express.Router();
 
-// Routes for employees
+// Роуты для сотрудников
 const employeeRouter = express.Router();
-employeeRouter.post('/login', EmployeeAuthController.login);
-employeeRouter.post('/registration', EmployeeAuthController.registration);
-employeeRouter.get('/doctors', EmployeeAuthController.getAll);
+employeeRouter.post('/registration', EmployeeController.registerEmployee);
+employeeRouter.post('/login', EmployeeController.loginEmployee);
+employeeRouter.get('/:employeeId', AuthMiddleware.verifyToken, EmployeeController.getEmployeeProfile);
+employeeRouter.put('/', AuthMiddleware.verifyToken, EmployeeController.updateEmployeeProfile);
+employeeRouter.delete('/:employeeId', AuthMiddleware.verifyToken, EmployeeController.deleteEmployeeProfile);
+employeeRouter.get('/', EmployeeController.getEmployees);
 apiRouter.use('/employee', employeeRouter);
 
-// Routes for clients
+// Роуты для клиентов
 const clientRouter = express.Router();
-clientRouter.post('/login', ClientAuthController.login);
-clientRouter.post('/registration', ClientAuthController.registration);
-clientRouter.get('/clients', ClientAuthController.getAll);
+clientRouter.post('/registration', ClientController.registerClient);
+clientRouter.post('/login', ClientController.loginClient);
+clientRouter.get('/:clientId', AuthMiddleware.verifyToken, ClientController.getClientProfile);
+clientRouter.put('/', AuthMiddleware.verifyToken, ClientController.updateClientProfile);
+clientRouter.delete('/:clientId', AuthMiddleware.verifyToken, ClientController.deleteClientProfile);
+clientRouter.get('/', ClientController.getClients);
 apiRouter.use('/client', clientRouter);
 
-// Routes for messages
-const messagesRouter = express.Router();
-messagesRouter.post('/', MessageController.create);
-messagesRouter.get('/:destination', AuthMiddleware, MessageController.getByUser);
-messagesRouter.get('/', RoleMiddleware('ADMIN'), MessageController.getAll);
-messagesRouter.put('/', MessageController.update);
-messagesRouter.delete('/:id', MessageController.delete);
-apiRouter.use('/messages', messagesRouter);
+// Роуты для встреч
+const appointmentRouter = express.Router();
+appointmentRouter.post('/', AppointmentController.createAppointment);
+appointmentRouter.get('/', AppointmentController.getAppointments);
+appointmentRouter.get('/:appointmentId', AppointmentController.getAppointmentById);
+appointmentRouter.delete('/:appointmentId', AppointmentController.deleteAppointment);
+apiRouter.use('/appointment', appointmentRouter);
 
-// Routes for tasks (todos)
-const tasksRouter = express.Router();
-tasksRouter.post('/', TaskController.create);
-tasksRouter.get('/:user', AuthMiddleware, TaskController.getByUser);
-tasksRouter.get('/', RoleMiddleware('ADMIN'), TaskController.getAll);
-tasksRouter.put('/', TaskController.update);
-tasksRouter.delete('/:id', TaskController.delete);
-apiRouter.use('/tasks', tasksRouter);
-
+// Роуты для специальностей
+const specialtyRouter = express.Router();
+specialtyRouter.post('/', SpecialtyController.createSpecialty);
+specialtyRouter.get('/', SpecialtyController.getSpecialty);
+apiRouter.use('/specialty', specialtyRouter);
 module.exports = apiRouter;

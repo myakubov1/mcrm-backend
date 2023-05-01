@@ -9,6 +9,7 @@ const Client = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   appointments: [{ type: Schema.Types.ObjectId, ref: 'Appointment' }],
-});
+  date: { type: Date, required: true, default: Date.now },
+}, { versionKey: false });
 
 module.exports = model('Client', Client);

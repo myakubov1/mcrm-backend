@@ -5,9 +5,9 @@ const Employee = new Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   password: { type: String, required: true },
-  specialties: [{ type: String, ref: 'Role' }],
+  specialties: [{ type: Schema.Types.ObjectId, ref: 'Specialty' }],
   experience: { type: Number, required: true },
   date: { type: Date, required: true, default: Date.now },
-});
+}, { versionKey: false });
 
 module.exports = model('Employee', Employee);

@@ -1,80 +1,122 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const Role = require('../models/Role');
 const Client = require('../models/Client');
 
-const generateAccessToken = (id, roles, passport, date) => {
-  const payload = {
-    id,
-    roles,
-    passport,
-    date,
-  };
-  return jwt.sign(payload, process.env.SECRET, { expiresIn: '24h' });
-};
-
 class ClientController {
-  async registration(req, res) {
+  registerClient = async (req, res, next) => {
     try {
       const {
         passport, firstName, lastName, dateOfBirth, phoneNumber, email, password,
       } = req.body;
 
-      const candidate = await Client.findOne({ passport });
-      if (candidate) {
-        return res.status(400).json({ message: 'Пользователь уже существует' });
-      }
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      const hashPassword = bcrypt.hashSync(password, 7);
-
-      const userRole = await Role.findOne({ value: 'CLIENT' });
-
-      const client = new Client({
+      const newClient = new Client({
         passport,
         firstName,
         lastName,
         dateOfBirth,
         phoneNumber,
         email,
-        password: hashPassword,
-        roles: [userRole.value],
+        password: hashedPassword,
       });
-      await client.save();
-      return res.json({ message: 'Пользователь успешно зарегистрирован' });
-    } catch (e) {
-      console.log(e);
-      res.status(400).json({ message: 'Ошибка при регистрации' });
-    }
-  }
 
-  async login(req, res) {
+      const savedClient = await newClient.save();
+
+      res.status(201).json({ client: savedClient });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  loginClient = async (req, res, next) => {
     try {
       const { passport, password } = req.body;
+
       const client = await Client.findOne({ passport });
+
       if (!client) {
-        return res.status(400).json({ message: `Пользователь ${passport} не найден` });
-      }
-      const validPassword = bcrypt.compareSync(password, client.password);
-      if (!validPassword) {
-        return res.status(400).json({ message: 'Введен неверный пароль' });
-      }
+        res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+      } else {
+        const isPasswordMatch = await bcrypt.compare(password, client.password);
+        if (!isPasswordMatch) {
+          res.status(401).json({ message: 'Неверное имя пользователя или пароль' });
+        } else {
+          // Генерация JWT токена
+          const token = jwt.sign({ clientId: client._id }, process.env.SECRET, { expiresIn: '1h' });
 
-      const token = generateAccessToken(client._id, client.roles, client.passport, client.date);
-      return res.json({ token });
-    } catch (e) {
-      console.log(e);
-      res.status(400).json({ message: 'Ошибка входа' });
+          res.status(200).json({ token });
+        }
+      }
+    } catch (error) {
+      next(error);
     }
-  }
+  };
 
-  async getAll(req, res) {
+  getClientProfile = async (req, res, next) => {
     try {
-      const users = await Client.find();
-      res.json(users);
-    } catch (e) {
-      console.log(e);
+      const { clientId } = req.user;
+
+      const client = await Client.findById(clientId);
+
+      if (!client) {
+        res.status(404).json({ message: 'Клиент не найден' });
+      } else {
+        res.status(200).json({ client });
+      }
+    } catch (error) {
+      next(error);
     }
-  }
+  };
+
+  getClients = async (req, res, next) => {
+    try {
+      const clients = await Client.find();
+
+      res.status(200).json(clients);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateClientProfile = async (req, res, next) => {
+    try {
+      const { clientId } = req.user;
+
+      console.log(clientId);
+      const {
+        passport, firstName, lastName, dateOfBirth, phoneNumber, email,
+      } = req.body;
+
+      const updatedClient = await Client.findByIdAndUpdate(
+        clientId,
+        {
+          passport, firstName, lastName, dateOfBirth, phoneNumber, email,
+        },
+        { new: true },
+      );
+
+      if (!updatedClient) {
+        res.status(404).json({ message: 'Клиент не найден' });
+      } else {
+        res.status(200).json({ employee: updatedClient });
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteClientProfile = async (req, res, next) => {
+    try {
+      const { clientId } = req.user;
+
+      await Client.findByIdAndRemove(clientId);
+
+      res.status(200).json({ message: 'Профиль клиента успешно удален' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 module.exports = new ClientController();
