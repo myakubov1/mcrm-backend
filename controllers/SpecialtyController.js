@@ -22,8 +22,15 @@ class SpecialtyController {
 
   getSpecialty = async (req, res, next) => {
     try {
-      const specialties = await Specialty.find();
-
+      const specialties = await Specialty.find()
+        .populate('employees')
+        .populate({
+          path: 'employees',
+          populate: {
+            path: 'specialties',
+            model: 'Specialty',
+          },
+        });
       res.status(200).json({ specialties });
     } catch (error) {
       next(error);

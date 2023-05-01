@@ -6,14 +6,14 @@ class AppointmentController {
   createAppointment = async (req, res, next) => {
     try {
       const {
-        client, employee, date, reason,
+        client, employee, appointmentDate, appointmentReason,
       } = req.body;
 
       const newAppointment = new Appointment({
         client,
         employee,
-        date,
-        reason,
+        appointmentDate,
+        appointmentReason,
       });
 
       const savedAppointment = await newAppointment.save();
@@ -47,10 +47,10 @@ class AppointmentController {
       const appointment = await Appointment.findById(appointmentId);
 
       if (!appointment) {
-        res.status(404).json({ message: 'Запись на прием не найдена' });
-      } else {
-        res.status(200).json({ appointment });
+        return res.status(404).json({ message: 'Запись на прием не найдена' });
       }
+
+      res.status(200).json({ appointment });
     } catch (error) {
       next(error);
     }
