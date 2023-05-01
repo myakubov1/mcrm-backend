@@ -32,8 +32,9 @@ class AppointmentController {
 
   getAppointments = async (req, res, next) => {
     try {
-      const appointments = await Appointment.find();
-
+      const { employeeId } = req.user;
+      const appointments = await Appointment.find({ employee: employeeId })
+        .populate('client');
       res.status(200).json({ appointments });
     } catch (error) {
       next(error);

@@ -1,15 +1,27 @@
 const { Schema, model } = require('mongoose');
 
 const Client = new Schema({
-  passport: { type: String, required: true },
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  dateOfBirth: { type: Date, required: true },
-  phoneNumber: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  passport: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
+  password: { type: String },
   appointments: [{ type: Schema.Types.ObjectId, ref: 'Appointment' }],
-  date: { type: Date, required: true, default: Date.now },
+  contactInfo: {
+    cellPhone: { type: Number },
+    homePhone: { type: String },
+    address: { type: String },
+    email: { type: String },
+  },
+  personalInfo: {
+    gender: { type: String },
+    birth: { type: Date },
+    patientID: { type: String },
+    nationality: { type: String },
+    maritalStatus: { type: String },
+    emergencyContact: { type: String },
+    language: { type: String },
+  },
+  date: { type: Date, default: Date.now },
 }, { versionKey: false });
 
 module.exports = model('Client', Client);

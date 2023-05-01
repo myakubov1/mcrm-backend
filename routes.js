@@ -32,7 +32,7 @@ apiRouter.use('/client', clientRouter);
 // Роуты для встреч
 const appointmentRouter = express.Router();
 appointmentRouter.post('/', AppointmentController.createAppointment);
-appointmentRouter.get('/', AppointmentController.getAppointments);
+appointmentRouter.get('/', AuthMiddleware.verifyToken, AppointmentController.getAppointments);
 appointmentRouter.get('/:appointmentId', AppointmentController.getAppointmentById);
 appointmentRouter.delete('/:appointmentId', AppointmentController.deleteAppointment);
 apiRouter.use('/appointment', appointmentRouter);
