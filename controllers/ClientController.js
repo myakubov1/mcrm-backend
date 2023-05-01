@@ -6,7 +6,7 @@ class ClientController {
   registerClient = async (req, res, next) => {
     try {
       const {
-        passport, firstName, lastName, dateOfBirth, phoneNumber, email, password,
+        passport, password,
       } = req.body;
 
       const clientExists = await Client.exists({ passport });
@@ -17,12 +17,7 @@ class ClientController {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newClient = new Client({
-        passport,
-        firstName,
-        lastName,
-        dateOfBirth,
-        phoneNumber,
-        email,
+        ...req.body,
         password: hashedPassword,
       });
 
@@ -60,8 +55,7 @@ class ClientController {
 
   getClientProfile = async (req, res, next) => {
     try {
-      const { clientId } = req.user;
-
+      const { clientId } = req.params;
       const client = await Client.findById(clientId);
 
       if (!client) {
